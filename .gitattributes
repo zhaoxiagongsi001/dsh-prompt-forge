@@ -1,0 +1,8 @@
+# Normalize line endings so a checkout on any platform rebuilds byte-identical
+# artifacts. lib/ is committed and must match what `npm run build` produces.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.ico binary

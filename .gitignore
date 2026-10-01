@@ -1,0 +1,29 @@
+# Installed dependencies
+node_modules/
+
+# lib/ is deliberately NOT ignored. `main` and `exports` point at lib/index.js
+# and lib/client.js, and a git-source install materialises exactly the tracked
+# files: ignoring the build output means a user who installs with
+# `dsh plugin add github:<owner>/dsh-prompt-forge` gets a package whose declared
+# entry artifact is missing, and dshmarket reports it as
+# "the declared entry artifact is missing (source-only checkout or blocked
+# build) — the next boot would fail".
+#
+# The build is reproducible from src/ (`npm run build`), so committing the
+# output costs nothing and is what makes the GitHub install path work. Re-run
+# the build before every commit that touches src/.
+
+# Local scratch space, never part of the deliverable
+.npm-cache/
+.tmp-pack/
+.refs/
+
+# Dev-only npm settings: points the cache at .npm-cache so a sandboxed build
+# never writes outside the checkout. Kept out of the repository so a clone does
+# not inherit this machine's registry/cache choices.
+.npmrc
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.log

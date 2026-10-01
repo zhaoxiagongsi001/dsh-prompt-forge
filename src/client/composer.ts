@@ -1,0 +1,111 @@
+/**
+ * Composer-bound helpers.
+ *
+ * The write-back path — "put this accepted text into the user's composer" —
+ * lives here, and it is the one place where a mistake would damage user data.
+ *
+ * `conversation.input.for(scope)` does not take a session id: it takes a
+ * **Session-scope context**, and it throws outright when that scope is not a
+ * currently retained session. The Session Controller's `scope(id)` is the
+ * supported way to obtain one (the shipped dsh-imagegen panel resolves its
+ * composer exactly this way), so that is the path used here.
+ *
+ * Everything below therefore returns `undefined` rather than throwing: an
+ * unaddressable composer disables the button or silently declines the write,
+ * where an exception would take the whole panel down.
+ */
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+
+/** The slice of the per-session composer facade this plugin drives. */
+export interface ComposerInput {
+  readonly state: { getSnapshot(): { readonly draft: string } }
+  setDraft(text: string): void
+  focus?(): void
+}
+
+/** The `ctx.conversation` surface this plugin consumes (structural). */
+export interface ConversationFace {
+  input: { for(sessionScope: unknown): ComposerInput }
+}
+
+/** The `ctx.sessions` surface this plugin consumes (structural). */
+interface SessionsFace {
+  /**
+   * Resolve the Session-scope context for one identity, or undefined when it is
+   * not mounted. This is the documented SessionInputResolver dependency.
+   */
+  scope?(id: SessionId): unknown
+}
+
+/**
+ * Resolve the composer facade for one session.
+ *
+ * @param ctx - client root context.
+ * @param sessionId - the session whose composer is addressed.
+ * @returns the composer facade, or undefined when this session has none.
+ */
+export function composerFor(ctx: ClientContext, sessionId: SessionId): ComposerInput | undefined {
+  const conversation = ctx.get('conversation') as ConversationFace | undefined
+  if (conversation === undefined || typeof conversation.input?.for !== 'function') return undefined
+
+  const sessions = ctx.get('sessions') as SessionsFace | undefined
+  if (sessions === undefined || typeof sessions.scope !== 'function') return undefined
+
+  let scope: unknown
+  try {
+    scope = sessions.scope(sessionId)
+  } catch {
+    return undefined
+  }
+  // `for()` refuses an absent scope, so short-circuit before calling it.
+  if (scope === undefined || scope === null) return undefined
+
+  try {
+    return conversation.input.for(scope)
+  } catch {
+    // "requires a retained Session scope" is the expected refusal for a session
+    // that stopped being retained between open and accept.
+    return undefined
+  }
+}
+
+/**
+ * Read the current draft of one composer.
+ * @param input - the composer facade.
+ * @returns the draft text, or an empty string when unreadable.
+ */
+export function readDraft(input: ComposerInput): string {
+  try {
+    const draft = input.state.getSnapshot().draft
+    return typeof draft === 'string' ? draft : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Write accepted text into one composer and return focus to it.
+ *
+ * The caller is responsible for having already confirmed the composer exists;
+ * this returns whether the write landed so a failed accept can be reported
+ * instead of appearing to succeed.
+ * @param input - the composer facade.
+ * @param text - the accepted prompt.
+ * @returns whether the draft was replaced.
+ */
+export function writeDraft(input: ComposerInput, text: string): boolean {
+  try {
+    input.setDraft(text)
+  } catch {
+    return false
+  }
+  // Focus is best-effort: the text is already in place, and a shell without the
+  // verb should not turn a successful accept into a failure.
+  try {
+    input.focus?.()
+  } catch {
+    // Ignored on purpose.
+  }
+  return true
+}

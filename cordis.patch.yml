@@ -1,0 +1,19 @@
+# dsh-prompt-forge bundle patch: inserts the plugin row into the web profile
+# roster.
+#
+# The row id is load-bearing. The managed-forms settings provider keys every
+# namespace by Loader entry id, and an inserted row's entry id is
+# `include:<rowId>` — so this row produces the settings namespace
+# **`include:prompt-forge`**. The browser half resolves that dynamically
+# (exact id, then `:<rowId>` suffix, then a schema fingerprint), so renaming
+# this row keeps working, but it does move where the values are stored. The row
+# id and PROMPT_FORGE_NAMESPACE in src/protocol.ts are kept identical on
+# purpose: that is what makes the first two resolution steps unambiguous.
+#
+# The row is a bare plugin by package name: the node half (exports ".") runs in
+# the host process and serves the two loopback routes, and the `dsh.client`
+# declaration in package.json makes the browser half (exports "./client") load
+# in the web GUI.
+- insert:
+    - id: prompt-forge
+      name: dsh-prompt-forge

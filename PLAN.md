@@ -328,3 +328,30 @@ v2 的代码在 0.2.0 已冻结，本节只改**对外可见的发布面**，`li
 ### 验证状态（v0.2.1）
 
 `tsc --noEmit` 0 错误；292 项自检全绿（48+29+215）；`lib/` 重跑构建后与 v0.2.0 逐字节一致，证明本次只动发布面。
+
+## 十三、投稿插件市场（2026-10-03）
+
+市场（dshmarket）不读 npm，只装它自己那份 curated registry（`awesome-dsh-plugin/awesome-dsh-plugin`）里的源。收录方式是向该仓库提一个 PR，新增**一个** YAML：`data/plugins/zhaoxiagongsi001__dsh-prompt-forge.yml`。
+
+### 状态
+
+| 项 | 值 |
+|---|---|
+| PR | `awesome-dsh-plugin/awesome-dsh-plugin#6471`（open，`mergeable_state: clean`） |
+| 改动 | 仅自己那一个文件，+7 行 |
+| CI | `Submission gate` 与 `PR check` 均 green（17/17 步） |
+| 分类 | `ui` |
+| 评审 | 尚无维护者评论；等待中 |
+
+收录门槛逐条核对过：`dsh.bundle` 存在、仓库有真实代码、仓库年龄 51.9h（>1 天）、已加 `dsh-plugin` topic、描述与代码相符。
+
+### 预构建 tarball（条目里的 `tarball:` 字段）
+
+条目指向 `https://github.com/zhaoxiagongsi001/dsh-prompt-forge/releases/latest/download/dsh-prompt-forge.tgz`，让用户跳过源码构建。
+
+**资产名必须无版本号**：`latest/download/` 只在请求时解析 `latest`，文件名照字面取。若叫 `dsh-prompt-forge-0.2.1.tgz`，提交当天能下、下次发版就 404，且无人察觉。详细规则与发版清单见 `RELEASING.md`。
+
+### 与既有条目的关系
+
+做「改写输入框草稿」的已有 5 条（`LHF198/dsh-prompt-optimizer` 最接近、但 2026-08-30 后停更、1 star；另有 `1321928757/dsh-prompt-polish`、`CheeseFox259/dsh-better-composer`、`Fishsb/dsh-prompt-enhancer`、`Hua1Q1nG__dsh-prompt-self`）。评审第 4 条是「是否已被覆盖」，但规则写明「不是先来后到，是谁更好」——差异点是不占布局的内联面板、生成中拒绝采纳、引用/附件二次确认、零全局快捷键、密钥不进浏览器。
+

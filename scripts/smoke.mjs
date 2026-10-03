@@ -198,23 +198,33 @@ note(host.isChatModel({ provider: 'p', id: 'qwen/qwen3.8-max-0902', name: 'x', i
   const names = registered.map(entry => entry.options?.name)
   note(injected.includes('conversation.input.left'), 'apply() injects the composer tool-row slot')
   note(injected.includes('settings.section'), 'apply() injects the settings section slot')
-  note(injected.includes('shell.overlay'), 'apply() injects the overlay slot')
+  note(injected.includes('conversation.input.overlay'), 'apply() injects the composer-card overlay slot')
+  note(!injected.includes('shell.overlay'), 'apply() no longer injects the retired frame-wide overlay slot')
   note(names.includes('conversation.input.left'), 'apply() registers the composer button')
   note(names.includes('settings.section'), 'apply() registers the settings page')
-  note(names.includes('shell.overlay'), 'apply() registers the dialog host')
+  note(names.includes('conversation.input.overlay'), 'apply() registers the inline panel host')
+  note(!names.includes('shell.overlay'), 'apply() no longer registers the retired dialog host')
   const button = registered.find(entry => entry.options?.name === 'conversation.input.left')
   note(typeof button?.options?.id === 'string' && button.options.id !== '', 'the composer entry declares a list id')
   note(typeof button?.options?.label === 'function', 'the composer entry declares a locale-following label')
   note(typeof button?.component === 'function', 'the composer entry registers a component')
 
-  // The overlay host must render nothing while no dialog is open: an
-  // always-present slot entry that painted chrome would sit over the whole app.
-  const overlay = registered.find(entry => entry.options?.name === 'shell.overlay')
+  // The panel must order itself after `dsh-context`'s `context-modal` (order 10)
+  // in the shared composer overlay, and use its own id: a shared cell id or a
+  // tie in order would collide at registration and take the boot down.
+  const panel = registered.find(entry => entry.options?.name === 'conversation.input.overlay')
+  note(panel?.options?.order === 40, `the panel entry orders itself at 40 (got ${panel?.options?.order})`)
+  note(panel?.options?.id === 'prompt-forge', 'the panel entry uses the plugin-owned id')
+  note(typeof panel?.component === 'function', 'the panel entry registers a component')
+
+  // The panel host is a session-scope occurrence: a composition that mounts it
+  // without a session binding must render nothing rather than throw, because a
+  // throw here fails the whole web boot.
   try {
-    const rendered = overlay.component({})
-    note(rendered === null, 'the overlay entry renders nothing while closed')
+    const rendered = panel.component({})
+    note(rendered === null, 'the panel host renders nothing without a session binding')
   } catch (error) {
-    note(false, `the overlay entry renders nothing while closed (${error.message})`)
+    note(false, `the panel host renders nothing without a session binding (${error.message})`)
   }
 
   for (const effect of effects) {

@@ -4,6 +4,13 @@
  * The write-back path — "put this accepted text into the user's composer" —
  * lives here, and it is the one place where a mistake would damage user data.
  *
+ * v2 note: the panel no longer routes through {@link composerFor}. The
+ * `conversation.input.overlay` slot occurrence receives `inputActions`
+ * (including `setDraft`) as a standard prop, so the host writes directly and
+ * this lookup is no longer on the live path. It is kept exported because the
+ * render check still drives it, and because the resolution rules below remain
+ * the documented contract for reaching a composer from a plain context.
+ *
  * `conversation.input.for(scope)` does not take a session id: it takes a
  * **Session-scope context**, and it throws outright when that scope is not a
  * currently retained session. The Session Controller's `scope(id)` is the
@@ -108,4 +115,25 @@ export function writeDraft(input: ComposerInput, text: string): boolean {
     // Ignored on purpose.
   }
   return true
+}
+
+/**
+ * Whether replacing the whole draft would damage structured content in it.
+ *
+ * `setDraft` clears the editor document and rewrites it as plain text, so every
+ * `@` reference chip degrades to its clipboard projection and any draft
+ * attachment is left without matching text. Neither leaves a separate undo
+ * step. When this returns true the panel must ask before writing, rather than
+ * silently flattening the user's draft.
+ *
+ * Non-finite counts are treated as absent: a `NaN` from an upstream projection
+ * must not be read as "has references" and nag the user on every accept.
+ * @param occurrences - the number of `@` reference chips in the live draft.
+ * @param attachmentIds - the number of attachment drafts in the live draft.
+ * @returns whether the write needs a confirmation step.
+ */
+export function writeNeedsConfirm(occurrences: number, attachmentIds: number): boolean {
+  const references = Number.isFinite(occurrences) && occurrences > 0
+  const attachments = Number.isFinite(attachmentIds) && attachmentIds > 0
+  return references || attachments
 }

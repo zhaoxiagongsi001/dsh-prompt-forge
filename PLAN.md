@@ -2,7 +2,7 @@
 
 > 工作区：`D:\DSH\dsh-prompt-forge`（2026-10-01 由 `D:\DSH\Project prompt optimization` 改名，包名同步 `dsh-prompt-optimizer` → `dsh-prompt-forge`）
 > 目标环境：DSH desktop 0.2.0-rc.2（profile：`desktop`）
-> 文档状态：需求已确认，待开工（未写任何代码）
+> 文档状态：**已实现并发布**。v1（0.1.0）与 v2（0.2.0）均已提交推送；v2 见第十一节
 
 ---
 
@@ -40,7 +40,7 @@
 | 结果交互 | 弹窗对比 + 流式 + 可编辑 + 采纳写回 |
 | 输出语言 | 跟随原文语言 |
 | 工程形态 | 本目录新建独立插件包，开发期 link 进 desktop profile |
-| 发布计划 | 近期只本地自用，**工程结构按可发布写**（`dsh.bundle` / `dsh.client` 元数据齐全），暂不发布 |
+| 发布计划 | 工程结构按可发布写（`dsh.bundle` / `dsh.client` 元数据齐全）；v1 已推 GitHub，v2 打 tag `v0.2.0` 并建 Release |
 
 ---
 
@@ -127,7 +127,6 @@ D:\DSH\dsh-prompt-forge\
 ├─ README.md                    # 安装、配置、排障
 ├─ package.json                 # name: dsh-prompt-forge；dsh.bundle / dsh.client
 ├─ tsconfig.json
-├─ tsdown.config.ts
 ├─ cordis.patch.yml             # 发布用 bundle 行（开发期也可直接 insert 进 profile）
 ├─ .npmrc                       # 把 npm/pnpm 缓存指向本目录，避免沙箱外写入
 ├─ src\
@@ -137,17 +136,20 @@ D:\DSH\dsh-prompt-forge\
 │  ├─ model-catalog.ts          # listProviders/listModels 聚合与过滤
 │  ├─ settings-compat.ts        # 命名空间兼容与降级
 │  └─ client\
-│     ├─ index.ts               # apply：注册设置页、按钮、overlay、locale
-│     ├─ settings-scope.ts      # loopback bridge settings scope
+│     ├─ index.tsx              # apply：注册设置页、按钮、内联面板、locale
+│     ├─ settings.ts            # 官方 configForms 读写
+│     ├─ composer.ts            # 输入框解析、读草稿、整替写入判定
+│     ├─ accept-guard.ts        # 采纳闸门（流式中/空结果拒绝），纯函数
+│     ├─ api.ts                 # fetch + SSE 解析（/models、/optimize）
 │     ├─ OptimizeButton.tsx     # conversation.input.left
-│     ├─ OptimizeDialog.tsx     # 左右对比 + SSE 渲染 + 微调
+│     ├─ InlinePanel.tsx        # conversation.input.overlay：对比 + SSE + 微调 + 二次确认
 │     ├─ SettingsSection.tsx    # 渠道/模型下拉 + 预设 CRUD + 主提示词
-│     ├─ sse.ts                 # fetch + ReadableStream 解析
 │     ├─ locales.ts             # zh / en
 │     └─ *.module.css
-└─ docs\
-   └─ DEV.md                    # 开发循环、link 步骤、常见故障
+└─ scripts\                     # 构建与自检（详见 README）
 ```
+
+> 上表是 v2 之后的实际结构。原计划的 `tsdown.config.ts`、`docs/DEV.md`、`settings-scope.ts`（loopback bridge）、`sse.ts` 均未落地或已合并：构建改手写打包器（见阶段 0 偏差），设置直接用官方 configForms，SSE 解析并入 `api.ts`。
 
 ---
 
@@ -269,8 +271,36 @@ D:\DSH\dsh-prompt-forge\
 
 审计同时确认无缺陷的部分（供后续维护者省重复劳动）：SSE 解析对「`data:` 行被拆到两个 chunk / 一 chunk 多帧 / CRLF 与 LF 混合 / 帧边界跨 chunk」四种情形均正确（多行 `data:` 不可达，宿主只写单行 `JSON.stringify`）；loopback 四重校验成立；`composerFor` 的「宁可不动也不写错」成立；无 `dangerouslySetInnerHTML`、无硬编码路径、宿主不接触密钥。
 
+---
+
+## 十一、v2：面板内联化（2026-10-03，已发布 0.2.0）
+
+v1 的对比界面是跨整个窗口的模态（`shell.overlay`）。v2 把它改成**输入框卡片内的内联面板**（`conversation.input.overlay`），并把采纳闸门与写回契约随之重构。
+
+### 改了什么
+
+| 方面 | v1 | v2 |
+|---|---|---|
+| 挂载槽 | `shell.overlay`（全屏遮罩） | `conversation.input.overlay`，order 40 |
+| 组件 | `OptimizeDialog.tsx` | `InlinePanel.tsx` + `inline.module.css`（`OptimizeDialog.tsx` 删除） |
+| 面板占位 | 模态遮罩 | **0px**：锚点是卡片内零高绝对定位元素，`absolute + bottom:100%` |
+| 写回路径 | `sessions.scope()` → `conversation.input.for()` 反射查找 | 会话级槽位直接交付 `inputActions.setDraft` |
+| 快捷键 | `Esc` 关闭、`Ctrl+Enter` 采纳（`document` 捕获阶段） | **无任何全局快捷键**，全部改可见按钮 |
+| 采纳闸门 | 内联在对话框组件里 | 独立纯函数 `accept-guard.ts`，按钮禁用态与采纳处理共用同一判定 |
+| 有引用/附件时采纳 | 直接整替 | 先弹二次确认（`writeNeedsConfirm`） |
+
+### 三个必须记住的实现约束
+
+1. **order 必须是 40，不能是 10**：`dsh-context` 在同一个槽里以 order 10 注册 `context-modal`；占同一格 id 会在注册时抛异常并连带整个 GUI 启动失败。
+2. **面板必须带 `backdrop-filter: var(--dsw-menu-backdrop-filter)`**：面板是半透明的，不设滤镜会直接透出后面的对话文字。`z-index` 要保持低（1），否则会盖住官方模型下拉。
+3. **不能注册全局快捷键**：官方 Lexical 键盘表把 `Ctrl/Cmd+Enter` 当「立即发送」，v1 的捕获阶段处理器没 `stopPropagation`，面板采纳与输入框发送会同时触发。这是 v2 去掉全部快捷键的直接原因。
+
+### 验证状态（v2）
+
+`tsc --noEmit` 0 错误；**292 项自检全绿**（smoke 48 + host-check 29 + render-check 215，v1 为 178）；构建产物可复现（连跑两次 SHA256 一致）。
+
 ### 剩余一步（需你确认）
 
-装进 `desktop` profile 属于工作区外写入，因此**尚未执行**。当前 profile 与 `cordis.patch.yml` 均未出现本插件，符合「仅在本目录产出」的约束。
+装进 `desktop` profile 属于工作区外写入。当前 profile 与 `cordis.patch.yml` 均未出现本插件，符合「仅在本目录产出」的约束。
 
-装完后仍需**手动刷新页面**（客户端 bundle 首次加载必须刷新，与 HMR 无关），再打开 设置 → 提示词优化 确认渠道下拉能列出 OFOX 的模型。
+若从 GitHub 安装，装完后仍需**手动刷新页面**（客户端 bundle 首次加载必须刷新，与 HMR 无关），再打开 设置 → 提示词优化 确认渠道下拉能列出 OFOX 的模型。

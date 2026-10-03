@@ -304,3 +304,27 @@ v1 的对比界面是跨整个窗口的模态（`shell.overlay`）。v2 把它�
 装进 `desktop` profile 属于工作区外写入。当前 profile 与 `cordis.patch.yml` 均未出现本插件，符合「仅在本目录产出」的约束。
 
 若从 GitHub 安装，装完后仍需**手动刷新页面**（客户端 bundle 首次加载必须刷新，与 HMR 无关），再打开 设置 → 提示词优化 确认渠道下拉能列出 OFOX 的模型。
+
+## 十二、v0.2.1：发布面修正（2026-10-03）
+
+v2 的代码在 0.2.0 已冻结，本节只改**对外可见的发布面**，`lib/` 一个字节未动。
+
+### 改了什么
+
+| 项 | 改动 |
+|---|---|
+| 截图 | 三张全部重拍为 v2 真机实拍（工具行 958×122、内联面板 982×516、设置页 800×800）；删除 v1 的全屏模态图 `screenshot-2-dialog.png`，新增 `screenshot-2-panel.png` |
+| README 图片引用 | 原先 **0 个** `![]()`，三张图从未被引用；现补上三处引用 |
+| 市场措辞 | 「从市场或 GitHub」→「从 GitHub」，并注明本插件尚未被 dshmarket 的收录源收进，市场里搜不到 |
+| 按钮位置 | 「输入框左下角」→「工具行里（附件按钮、权限下拉之后）」 |
+| 设置页能力 | 补「插件开关」与「输出上限 token（0 = 用模型默认值）」 |
+| 排障两条 | 「下拉是空的」原归因于行 id 与 `PROMPT_FORGE_NAMESPACE` 不一致 —— 与代码的三重兜底不符；「只读」的真因是 `ctx.configForms` 缺席或文档不可写 |
+| package.json | `files` 补 `assets` + `screenshots.json`（原先 npm 打包会丢图）；description 的 "side-by-side dialog" → "inline panel above the composer" |
+
+### 截图流程的可复用部分
+
+截图由 `D:\DSH\_forge-shots\gen.mjs` 生成：直接从 `~/.dsh/.credentials.yaml` 派生已签名 cookie，产出文件只含 cookie 值与拍摄逻辑，**签名密钥不落任何产物**，用完即删。拍摄前跑三项断言：新会话、侧栏隐藏、7 个历史会话标题关键词 0 命中。
+
+### 验证状态（v0.2.1）
+
+`tsc --noEmit` 0 错误；292 项自检全绿（48+29+215）；`lib/` 重跑构建后与 v0.2.0 逐字节一致，证明本次只动发布面。

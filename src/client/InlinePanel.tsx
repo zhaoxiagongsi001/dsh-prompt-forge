@@ -1,12 +1,13 @@
 /**
  * The inline optimization panel.
  *
- * This is the v2 surface: instead of a frame-wide modal, one panel is mounted
- * inside the composer card (slot `conversation.input.overlay`) and floats just
- * above the composer's top edge. It occupies **no** layout: the anchor is a
- * zero-height absolutely-positioned element and the panel is positioned against
- * it, so opening and closing the panel never moves the composer, never reflows
- * the transcript, and leaves the editor exactly where the user left it.
+ * One panel is mounted through the composer card's overlay slot
+ * (`conversation.input.overlay`), but it is a **viewport-centred floating layer**
+ * rather than a child anchored to the card: a long draft scrolls the card's top
+ * edge above the viewport, and anchoring there would hide the panel. It occupies
+ * **no** layout, so opening and closing the panel never moves the composer,
+ * never reflows the transcript, and leaves the editor exactly where the user
+ * left it.
  *
  * The write-back contract is unchanged from v1 and is still the point of this
  * component: the composer is only ever touched by Accept. Closing, stopping,

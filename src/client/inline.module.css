@@ -4,22 +4,35 @@
  * Every color reads a shipped `--dsw-alias-*` token so the panel follows the
  * active light/dark theme instead of hard-coding a palette.
  *
- * Sizing rule that matters: the panel fills its slot's anchor width (the
- * composer card, 712px at the shipped default) and floats *above* the card via
- * `bottom: 100%`. The host anchor is zero-height and absolutely positioned, so
- * nothing here can move the composer, the editor, or the transcript.
+ * Sizing rule that matters: the panel is a viewport-centred floating layer, not
+ * a child hung off the composer's top edge. The slot that mounts it lives inside
+ * the composer card, and a long draft scrolls that card's top edge above the
+ * viewport; anchoring to the edge would take the panel off-screen with it.
+ * `position: fixed` + `inset: 0` + `margin: auto` pin it to the viewport at any
+ * scroll position instead, while the height and inner scrolling are unchanged,
+ * so opening the panel still cannot move the composer, the editor, or the
+ * transcript. Width keeps following the shipped composer-card token so the
+ * panel's footprint is unchanged on the default window.
  */
 
 .panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* Float above the composer's top edge with a small gap. */
-  bottom: calc(100% + 8px);
+  /*
+   * Viewport-centred, not composer-anchored. `inset: 0` plus `margin: auto`
+   * centres the box on both axes without a `transform`: a transform would
+   * become the containing block for any fixed descendant and can blur text on
+   * some GPUs, while auto margins cannot.
+   */
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  /* The same width token the composer card uses; viewport-capped when narrow. */
+  box-sizing: border-box;
+  width: min(var(--dsh-composer-card-max-width, 712px), calc(100% - 24px));
   display: flex;
   flex-direction: column;
   height: min(42vh, 360px);
-  max-height: calc(100vh - 120px);
+  /* Never taller than the viewport; the body scrolls when the content outgrows it. */
+  max-height: calc(100% - 24px);
   border: 1px solid var(--dsw-alias-border-l1);
   border-radius: var(--dsw-radius-lg);
   /*
@@ -39,10 +52,9 @@
    * Deliberately LOW. The panel lives inside the composer seat, which is itself
    * an elevated sticky layer (`z-index: 7`, bumped to 9 while the model trigger
    * menu is open), so the seat's stacking context already puts this panel above
-   * the transcript regardless of the value here. What z-index matters *inside*
-   * the seat is the official model dropdown: it opens upward from the bottom of
-   * the card and therefore crosses the panel's footprint. Keeping the panel low
-   * lets that menu paint over the panel instead of being buried by it.
+   * the transcript regardless of the value here. Inside that seat, other
+   * seat-owned overlays (the official model dropdown in particular) should keep
+   * painting above the panel, so its own z-index stays low.
    */
   z-index: 1;
 }

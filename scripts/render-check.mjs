@@ -116,9 +116,17 @@ check(!/!important\s*;/u.test(cssText), 'the stylesheet never falls back on !imp
 check(injected.includes('dsh-prompt-forge/inline'), 'the inline panel stylesheet is injected on module load')
 const allCss = injectedStyles.map(style => style.textContent).join('\n')
 check(allCss.includes('inline_panel'), 'the inline stylesheet carries its own namespaced class names')
-// The panel floats against the composer's zero-height anchor, so it must never
-// take part in layout: a non-absolute panel would push the editor around.
-check(/\.inline_panel\s*\{[^}]*position:\s*absolute/u.test(allCss), 'the panel is absolutely positioned so it cannot reflow the composer')
+// The panel is a viewport-centred floating layer, not a child hung off the
+// composer's top edge. A long draft scrolls that edge above the viewport, so
+// anchoring there would hide the panel; `fixed` + `inset: 0` + `margin: auto`
+// centres it on every scroll position while still keeping it out of layout.
+check(
+  /\.inline_panel\s*\{[^}]*position:\s*fixed/u.test(allCss)
+    && /\.inline_panel\s*\{[^}]*inset:\s*0/u.test(allCss)
+    && /\.inline_panel\s*\{[^}]*margin:\s*auto/u.test(allCss)
+    && !/bottom:\s*calc\(100%\s*\+\s*8px\)/u.test(allCss),
+  'the panel is fixed and centred in the viewport instead of hanging off the composer',
+)
 check(/\.inline_panel\s*\{[^}]*height:\s*min\(42vh,\s*360px\)/u.test(allCss), 'the panel uses the frozen min(42vh, 360px) height')
 
 const beforeSecondLoad = injectedStyles.length

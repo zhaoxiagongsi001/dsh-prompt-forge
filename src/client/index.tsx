@@ -8,12 +8,13 @@
  *      (`conversation.input.overlay`), mounted only while that session has a
  *      panel open.
  *
- * The panel moved into the composer card in v2, out of the frame-wide overlay.
- * The slot's anchor is a zero-height, absolutely-positioned element inside the
- * card (`client.js:17172`), so a panel positioned against its top edge floats
- * above the composer without occupying layout: opening it never moves the
- * editor and never reflows the transcript. That anchoring is also why the panel
- * can be taller than the composer itself.
+ * The panel moved into the composer card's overlay slot in v2, out of the
+ * frame-wide overlay, so it occupies no layout: opening it never moves the
+ * editor and never reflows the transcript. Its stylesheet pins it to the
+ * viewport centre (`position: fixed` + `inset: 0` + `margin: auto`) rather than
+ * hanging off the slot's zero-height anchor: that anchor sits at the card's top
+ * edge, and a long draft scrolls the edge above the viewport, which used to take
+ * the panel off-screen with it.
  *
  * The write-back path became simpler in the same move. A session-scope slot
  * occurrence is handed `inputActions` (including `setDraft`) as a standard prop,

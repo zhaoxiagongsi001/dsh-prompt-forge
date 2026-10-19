@@ -1,7 +1,7 @@
 {
   "name": "dsh-prompt-forge",
   "version": "0.2.1",
-  "description": "Prompt optimizer for the DSH web GUI: one button beside the composer rewrites the current draft through a configured LLM channel (host-side, no key duplication), streams the result into an inline panel above the composer, and only writes back on Accept.",
+  "description": "Prompt optimizer for the DSH web GUI: one button beside the composer rewrites the current draft through a configured LLM channel (host-side, no key duplication), streams the result into a centred floating panel, and only writes back on Accept.",
   "type": "module",
   "main": "lib/index.js",
   "engines": {
